@@ -65,7 +65,7 @@ pop.den_map
 #And the highest daily variability(>5) of PM 2.5 in green are distributed in the northern-west part of Buffalo, near the Niagara falls and the boundary bewteen the Canada and US.
 #From the northern-west corner to the southern-east corner, the color in the maps turns from green to red, which means the daily variability of PM 2.5 decrease gradually in spatial.
 
-#Question
+#Question 2
 # Solve the p-median problem when p value is ranged from 3 to 15 stations (p = 3,4,...,15). 
 distance_total = c(rep(0,13))
 set.seed(12345)
@@ -229,5 +229,54 @@ pop.den_map
 
 #5. For the p = 5 solution, ﬁnd the best solution which takes into account the population density of each demand zone. 
 #Make the spider diagram of the solution with population density as a weight and compare these maps with the solution based on Euclidian distance (above)
+weight = en.county$pop.den
+eucdists<-euc.dists(en.county, en.county)
+weighted_distance = matrix(0,297,297)
+for (i in 1:297){
+  weighted_distance[i,] = weight[i]*eucdists[i,]
+}
+#weighted_distance
+solution.5_weighteddistance = allocations(en.county, p=5, metric = weighted_distance)
+unique(solution.5_weighteddistance$allocation)
+distance_total5_weighteddistance= sum(unique(solution.5_weighteddistance$allocdist))
+distance_total5_weighteddistance
 
+#Make the spider diagram when consider the effects of weights
+weight_new = en.county1$pop.den
+eucdists_new<-euc.dists(en.county1, en.county1)
+weighted_distance_new = matrix(0,297,297)
+for (i in 1:297){
+  weighted_distance_new[i,] = weight_new[i]*eucdists_new[i,]
+}
+
+solution.5_weighteddistance_new = allocations(en.county1, p=5, metric = weighted_distance_new)
+unique(solution.5_weighteddistance_new$allocation)
+
+p <- leaflet(en.county1) %>%
+  setView(-78.80,42.90, 9) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN')))
+bins<-c(0,0.02,0.04,0.06,0.08,0.10,0.12,0.14,0.16,0.18,0.2,Inf)
+pal<-colorBin("Spectral", domain = solution.5_weighteddistance_new$allocdist, bins = bins, reverse = TRUE)
+
+k=star.diagram(solution.5_weighteddistance_new)
+
+pop.den_map <- p%>%
+  addTiles()%>%
+  addPolygons(
+    fillColor = ~pal(solution.5_weighteddistance_new$allocdist),
+    weight = 0.5,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7)%>%
+  addLegend(pal = pal, values = ~solution.5_weighteddistance_new$allocdist, opacity = 0.7, title = 'Daily variability of PM 2.5 in 2011',
+            position = "bottomright")%>%
+  addPolylines(data=k,
+               color = '#F00',
+               weight = 2)
+pop.den_map
+#For the p = 5 solution, the best solution under the weighted distance uses sites 9, 232, 218, 74, 156.
+#And the total weighted distance is 2089158, which is lower than the distance without considering the weight.
 
